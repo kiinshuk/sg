@@ -1,0 +1,166 @@
+{% extends 'base.html' %}
+{% block title %}{{ other_user.username }} — Snapgram{% endblock %}
+{% block content %}
+<div class="chat-layout">
+
+  <!-- ── LEFT: conversation list (desktop) ── -->
+  <div class="chat-sidebar-panel">
+    <div class="inbox-panel-header">
+      <h2 class="inbox-panel-title">Messages</h2>
+      <a href="{% url 'create_group' %}" class="icon-action-btn" title="New Group">
+        <i class="fa-solid fa-people-group"></i>
+      </a>
+    </div>
+    <div class="convo-list chat-sidebar-list">
+      {% for u in connected_users %}
+      <a href="{% url 'conversation' username=u.username %}"
+         class="convo-item {% if u == other_user %}active{% endif %}">
+        <div class="convo-avatar-wrap">
+          {% if u.profile.profile_pic %}
+            <img src="{{ u.profile.profile_pic.url }}" class="convo-avatar" alt="{{ u.username }}"/>
+          {% else %}
+            <div class="convo-avatar-placeholder">{{ u.username|first|upper }}</div>
+          {% endif %}
+        </div>
+        <div class="convo-info">
+          <span class="convo-name">{{ u.username }}</span>
+          <span class="convo-preview">{{ u.get_full_name }}</span>
+        </div>
+      </a>
+      {% endfor %}
+    </div>
+  </div>
+
+  <!-- ── RIGHT: Chat window ── -->
+  <div class="chat-window">
+    <!-- Header -->
+    <div class="chat-header">
+      <a href="{% url 'inbox' %}" class="chat-back-btn"><i class="fa-solid fa-arrow-left"></i></a>
+      <a href="{% url 'profile' username=other_user.username %}" class="chat-header-user">
+        {% if other_user.profile.profile_pic %}
+          <img src="{{ other_user.profile.profile_pic.url }}" class="chat-header-avatar" alt="{{ other_user.username }}"/>
+        {% else %}
+          <div class="chat-header-avatar-placeholder">{{ other_user.username|first|upper }}</div>
+        {% endif %}
+        <div class="chat-header-info">
+          <span class="chat-header-name">{{ other_user.username }}</span>
+          {% if other_user.get_full_name %}<span class="chat-header-sub">{{ other_user.get_full_name }}</span>{% endif %}
+        </div>
+      </a>
+      <a href="{% url 'profile' username=other_user.username %}" class="chat-header-action">
+        <i class="fa-solid fa-circle-info"></i>
+      </a>
+    </div>
+
+    <!-- Messages -->
+    <div class="chat-messages" id="chatMessages">
+      {% for msg in messages %}
+      <div class="msg-row {% if msg.sender == request.user %}sent{% else %}received{% endif %}" data-id="{{ msg.id }}">
+        {% if msg.sender != request.user %}
+          {% if msg.sender.profile.profile_pic %}
+            <img src="{{ msg.sender.profile.profile_pic.url }}" class="msg-avatar" alt="{{ msg.sender.username }}"/>
+          {% else %}
+            <div class="msg-avatar msg-avatar-placeholder">{{ msg.sender.username|first|upper }}</div>
+          {% endif %}
+        {% endif %}
+        <div class="msg-content">
+          <div class="msg-bubble">{{ msg.content }}</div>
+          <div class="msg-meta">{{ msg.created_at|date:"g:i A" }}</div>
+        </div>
+      </div>
+      {% empty %}
+      <div class="chat-empty-state">
+        {% if other_user.profile.profile_pic %}
+          <img src="{{ other_user.profile.profile_pic.url }}" class="chat-empty-avatar" alt="{{ other_user.username }}"/>
+        {% else %}
+          <div class="chat-empty-avatar-placeholder">{{ other_user.username|first|upper }}</div>
+        {% endif %}
+        <h3>{{ other_user.username }}</h3>
+        <p>{{ other_user.get_full_name }}</p>
+        <span class="chat-empty-hint">Say hi 👋</span>
+      </div>
+      {% endfor %}
+    </div>
+
+    <!-- Input -->
+    <div class="chat-input-bar">
+      <div class="chat-input-wrap">
+        <input type="text" id="msgInput" class="chat-input" placeholder="Message {{ other_user.username }}..." autocomplete="off"/>
+        <button class="chat-send-btn" id="sendBtn" onclick="sendMessage()">
+          <i class="fa-solid fa-paper-plane"></i>
+        </button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+const otherUsername = '{{ other_user.username }}';
+const csrfToken = '{{ csrf_token }}';
+let lastId = {% if messages %}{{ messages.last.id|default:0 }}{% else %}0{% endif %};
+const chatMessages = document.getElementById('chatMessages');
+const msgInput = document.getElementById('msgInput');
+
+scrollToBottom();
+
+function scrollToBottom() {
+  chatMessages.scrollTop = chatMessages.scrollHeight;
+}
+
+function sendMessage() {
+  const content = msgInput.value.trim();
+  if (!content) return;
+  msgInput.value = '';
+  fetch(`/chat/dm/${otherUsername}/send/`, {
+    method: 'POST',
+    headers: {'X-CSRFToken': csrfToken, 'Content-Type': 'application/x-www-form-urlencoded'},
+    body: `content=${encodeURIComponent(content)}`,
+  })
+  .then(r => r.json())
+  .then(data => {
+    if (data.status === 'ok') {
+      appendMsg({content: data.message, time: data.time, id: data.id}, true);
+      lastId = data.id;
+    }
+  });
+}
+
+function appendMsg(data, isMe) {
+  const row = document.createElement('div');
+  row.className = `msg-row ${isMe ? 'sent' : 'received'}`;
+  row.setAttribute('data-id', data.id || Date.now());
+  if (!isMe && data.avatar) {
+    const img = document.createElement('img');
+    img.src = data.avatar; img.className = 'msg-avatar';
+    row.appendChild(img);
+  } else if (!isMe) {
+    const d = document.createElement('div');
+    d.className = 'msg-avatar msg-avatar-placeholder';
+    d.textContent = data.sender ? data.sender[0].toUpperCase() : '?';
+    row.appendChild(d);
+  }
+  row.innerHTML += `<div class="msg-content"><div class="msg-bubble">${escHtml(data.content)}</div><div class="msg-meta">${data.time}</div></div>`;
+  chatMessages.appendChild(row);
+  scrollToBottom();
+}
+
+function escHtml(t) {
+  const d = document.createElement('div');
+  d.appendChild(document.createTextNode(t));
+  return d.innerHTML;
+}
+
+function poll() {
+  fetch(`/chat/dm/${otherUsername}/messages/?after=${lastId}`)
+  .then(r => r.json())
+  .then(data => {
+    data.messages.forEach(m => {
+      if (m.id > lastId) { lastId = m.id; if (!m.is_me) appendMsg(m, false); }
+    });
+  });
+}
+setInterval(poll, 3000);
+
+msgInput.addEventListener('keydown', e => { if (e.key === 'Enter') { e.preventDefault(); sendMessage(); } });
+</script>
+{% endblock %}

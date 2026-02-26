@@ -1,0 +1,33 @@
+{% extends 'base.html' %}
+{% block title %}Explore — Snapgram{% endblock %}
+{% block content %}
+<div class="explore-container">
+  <h2 class="explore-title">Explore</h2>
+  {% if posts %}
+  <div class="explore-grid">
+    {% for post in posts %}
+    <a href="{% url 'post_detail' post.id %}" class="grid-item">
+      {% if post.video %}
+        <div class="grid-video-thumb">
+          <i class="fa-solid fa-play"></i>
+        </div>
+      {% else %}
+        <img src="{{ post.image.url }}" alt="post" loading="lazy"/>
+      {% endif %}
+      <div class="grid-overlay">
+        <span><i class="fa-solid fa-heart"></i> {{ post.likes_count }}</span>
+        <span><i class="fa-regular fa-comment"></i> {{ post.comments.count }}</span>
+      </div>
+    </a>
+    {% endfor %}
+  </div>
+  {% else %}
+    <div class="empty-posts">
+      <i class="fa-regular fa-image"></i>
+      <h3>No posts yet</h3>
+      <p>Be the first to share something!</p>
+      <a href="{% url 'create_post' %}" class="btn-primary">Create Post</a>
+    </div>
+  {% endif %}
+</div>
+{% endblock %}

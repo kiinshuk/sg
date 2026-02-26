@@ -1,0 +1,204 @@
+{% extends 'base.html' %}
+{% block title %}Feed — Snapgram{% endblock %}
+{% block content %}
+<div class="feed-layout">
+  <!-- Posts -->
+  <div class="feed-posts">
+    {% if not posts %}
+      <div class="empty-feed">
+        <i class="fa-regular fa-image"></i>
+        <h3>Your feed is empty</h3>
+        <p>Follow people to see their photos and videos here.</p>
+        <a href="{% url 'explore' %}" class="btn-primary">Explore</a>
+      </div>
+    {% endif %}
+    {% for post in posts %}
+    <div class="post-card" id="post-{{ post.id }}">
+      <!-- Post Header -->
+      <div class="post-header">
+        <a href="{% url 'profile' username=post.user.username %}" class="post-user">
+          {% if post.user.profile.profile_pic %}
+            <img src="{{ post.user.profile.profile_pic.url }}" class="post-avatar" alt="{{ post.user.username }}"/>
+          {% else %}
+            <div class="post-avatar-placeholder">{{ post.user.username|first|upper }}</div>
+          {% endif %}
+          <div>
+            <span class="post-username">{{ post.user.username }}</span>
+            {% if post.user.first_name %}
+              <span class="post-fullname">{{ post.user.first_name }}</span>
+            {% endif %}
+          </div>
+        </a>
+        {% if post.user == request.user %}
+        <form method="post" action="{% url 'delete_post' post.id %}" onsubmit="return confirm('Delete this post?')">
+          {% csrf_token %}
+          <button class="post-menu-btn" type="submit" title="Delete post"><i class="fa-solid fa-trash"></i></button>
+        </form>
+        {% endif %}
+      </div>
+
+      <!-- Post Media -->
+      <div class="post-media">
+        {% if post.video %}
+          <video controls preload="metadata" class="post-video">
+            <source src="{{ post.video.url }}">
+          </video>
+        {% elif post.image %}
+          <img src="{{ post.image.url }}" alt="post" class="post-image" loading="lazy"/>
+        {% endif %}
+      </div>
+
+      <!-- Post Actions -->
+      <div class="post-actions">
+        <div class="post-actions-left">
+          <button class="action-btn like-btn {% if post.id in liked_post_ids %}liked{% endif %}"
+                  data-post-id="{{ post.id }}"
+                  onclick="toggleLike({{ post.id }}, this)">
+            <i class="{% if post.id in liked_post_ids %}fa-solid{% else %}fa-regular{% endif %} fa-heart"></i>
+          </button>
+          <a href="{% url 'post_detail' post.id %}" class="action-btn">
+            <i class="fa-regular fa-comment"></i>
+          </a>
+          {% with other=post.user %}
+          {% if other != request.user %}
+          <a href="{% url 'conversation' username=post.user.username %}" class="action-btn">
+            <i class="fa-regular fa-paper-plane"></i>
+          </a>
+          {% endif %}
+          {% endwith %}
+        </div>
+      </div>
+
+      <!-- Likes Count -->
+      <div class="post-likes">
+        <span class="likes-count" id="likes-{{ post.id }}">{{ post.likes_count }}</span>
+        {% if post.likes_count == 1 %} like{% else %} likes{% endif %}
+      </div>
+
+      <!-- Caption -->
+      {% if post.caption %}
+      <div class="post-caption">
+        <a href="{% url 'profile' username=post.user.username %}" class="caption-username">{{ post.user.username }}</a>
+        {{ post.caption }}
+      </div>
+      {% endif %}
+
+      <!-- Comments Preview -->
+      {% with comments=post.comments.all %}
+      {% if comments.count > 0 %}
+      <div class="post-comments-preview">
+        {% if comments.count > 2 %}
+          <a href="{% url 'post_detail' post.id %}" class="view-comments">View all {{ comments.count }} comments</a>
+        {% endif %}
+        {% for comment in comments|slice:"-2:" %}
+          <div class="comment-line">
+            <a href="{% url 'profile' username=comment.user.username %}" class="comment-username">{{ comment.user.username }}</a>
+            <span>{{ comment.text }}</span>
+          </div>
+        {% endfor %}
+      </div>
+      {% endif %}
+      {% endwith %}
+
+      <!-- Add Comment -->
+      <div class="post-comment-box">
+        <form method="post" action="{% url 'add_comment' post.id %}">
+          {% csrf_token %}
+          <input type="text" name="text" class="comment-input" placeholder="Add a comment..." autocomplete="off"/>
+          <button type="submit" class="comment-submit">Post</button>
+        </form>
+      </div>
+
+      <div class="post-time">{{ post.created_at|timesince }} ago</div>
+    </div>
+    {% endfor %}
+  </div>
+
+  <!-- Sidebar -->
+  <div class="feed-sidebar">
+    <!-- User Info -->
+    <div class="sidebar-user">
+      <a href="{% url 'profile' username=request.user.username %}">
+        {% if request.user.profile.profile_pic %}
+          <img src="{{ request.user.profile.profile_pic.url }}" class="sidebar-avatar" alt="me"/>
+        {% else %}
+          <div class="sidebar-avatar-placeholder">{{ request.user.username|first|upper }}</div>
+        {% endif %}
+      </a>
+      <div class="sidebar-user-info">
+        <a href="{% url 'profile' username=request.user.username %}" class="sidebar-username">{{ request.user.username }}</a>
+        <span class="sidebar-fullname">{{ request.user.get_full_name }}</span>
+      </div>
+      <a href="{% url 'logout' %}" class="sidebar-action">Log out</a>
+    </div>
+
+    <!-- Suggested Users -->
+    {% if suggested %}
+    <div class="suggested-section">
+      <div class="suggested-header">
+        <span>Suggestions For You</span>
+      </div>
+      {% for user in suggested %}
+      <div class="suggested-user" id="suggested-{{ user.id }}">
+        <a href="{% url 'profile' username=user.username %}">
+          {% if user.profile.profile_pic %}
+            <img src="{{ user.profile.profile_pic.url }}" class="suggested-avatar" alt="{{ user.username }}"/>
+          {% else %}
+            <div class="suggested-avatar-placeholder">{{ user.username|first|upper }}</div>
+          {% endif %}
+        </a>
+        <div class="suggested-info">
+          <a href="{% url 'profile' username=user.username %}" class="suggested-username">{{ user.username }}</a>
+          <span class="suggested-meta">Suggested for you</span>
+        </div>
+        <button class="btn-follow-sm" onclick="toggleFollow('{{ user.username }}', this)">Follow</button>
+      </div>
+      {% endfor %}
+    </div>
+    {% endif %}
+
+    <p class="sidebar-footer-links">
+      © 2024 Snapgram · Built with Django
+    </p>
+  </div>
+</div>
+
+<script>
+function toggleLike(postId, btn) {
+  fetch(`/post/${postId}/like/`, {
+    method: 'POST',
+    headers: {'X-CSRFToken': '{{ csrf_token }}', 'Content-Type': 'application/json'},
+  })
+  .then(r => r.json())
+  .then(data => {
+    const icon = btn.querySelector('i');
+    const countEl = document.getElementById(`likes-${postId}`);
+    if (data.liked) {
+      icon.className = 'fa-solid fa-heart';
+      btn.classList.add('liked');
+    } else {
+      icon.className = 'fa-regular fa-heart';
+      btn.classList.remove('liked');
+    }
+    countEl.textContent = data.likes_count;
+  });
+}
+
+function toggleFollow(username, btn) {
+  fetch(`/profile/${username}/follow/`, {
+    method: 'POST',
+    headers: {'X-CSRFToken': '{{ csrf_token }}'},
+  })
+  .then(r => r.json())
+  .then(data => {
+    if (data.following) {
+      btn.textContent = 'Following';
+      btn.classList.add('following');
+    } else {
+      btn.textContent = 'Follow';
+      btn.classList.remove('following');
+    }
+  });
+}
+</script>
+{% endblock %}

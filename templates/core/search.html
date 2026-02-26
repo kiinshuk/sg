@@ -1,0 +1,45 @@
+{% extends 'base.html' %}
+{% block title %}Search — Snapgram{% endblock %}
+{% block content %}
+<div class="search-container">
+  <div class="search-header">
+    <form action="{% url 'search' %}" method="get" class="search-form-lg">
+      <div class="search-wrap-lg">
+        <i class="fa-solid fa-magnifying-glass"></i>
+        <input type="text" name="q" value="{{ query }}" placeholder="Search users..." autofocus autocomplete="off"/>
+      </div>
+    </form>
+  </div>
+
+  {% if query %}
+    {% if results %}
+      <div class="search-results">
+        {% for user in results %}
+        <div class="search-result-item">
+          <a href="{% url 'profile' username=user.username %}" class="search-user-link">
+            {% if user.profile.profile_pic %}
+              <img src="{{ user.profile.profile_pic.url }}" class="search-avatar" alt="{{ user.username }}"/>
+            {% else %}
+              <div class="search-avatar-placeholder">{{ user.username|first|upper }}</div>
+            {% endif %}
+            <div class="search-user-info">
+              <span class="search-username">{{ user.username }}</span>
+              <span class="search-fullname">{{ user.get_full_name }}</span>
+            </div>
+          </a>
+        </div>
+        {% endfor %}
+      </div>
+    {% else %}
+      <div class="search-empty">
+        <p>No results for "<strong>{{ query }}</strong>"</p>
+      </div>
+    {% endif %}
+  {% else %}
+    <div class="search-empty">
+      <i class="fa-solid fa-magnifying-glass"></i>
+      <p>Search for people</p>
+    </div>
+  {% endif %}
+</div>
+{% endblock %}

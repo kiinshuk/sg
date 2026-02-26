@@ -1,0 +1,131 @@
+{% extends 'base.html' %}
+{% block title %}New Post — Snapgram{% endblock %}
+{% block content %}
+<div class="create-post-container">
+  <div class="create-post-card">
+    <h2 class="create-post-title">Create New Post</h2>
+    <form method="post" enctype="multipart/form-data" class="create-post-form">
+      {% csrf_token %}
+
+      <!-- Media Upload Area -->
+      <div class="upload-area" id="uploadArea" onclick="document.getElementById('imageInput').click()">
+        <div class="upload-placeholder" id="uploadPlaceholder">
+          <i class="fa-regular fa-image"></i>
+          <p>Drag photo/video here or <span>click to browse</span></p>
+          <p class="upload-hint">Supports: JPG, PNG, GIF, MP4, MOV</p>
+        </div>
+        <div class="media-preview-wrap" id="mediaPreviewWrap" style="display:none;">
+          <img id="imagePreview" src="" alt="preview" style="display:none;"/>
+          <video id="videoPreview" controls style="display:none;"></video>
+          <button type="button" class="remove-media-btn" onclick="removeMedia(event)">×</button>
+        </div>
+      </div>
+
+      <div style="display:none;">
+        {{ form.image }}
+        {{ form.video }}
+      </div>
+
+      <!-- Caption -->
+      <div class="form-group">
+        <div class="caption-user">
+          {% if request.user.profile.profile_pic %}
+            <img src="{{ request.user.profile.profile_pic.url }}" class="caption-avatar" alt="me"/>
+          {% else %}
+            <div class="caption-avatar-placeholder">{{ request.user.username|first|upper }}</div>
+          {% endif %}
+          <span class="caption-username">{{ request.user.username }}</span>
+        </div>
+        {{ form.caption }}
+        <div class="caption-count"><span id="captionCount">0</span>/500</div>
+      </div>
+
+      {% if form.errors %}
+        <p class="form-error">Please upload an image or video.</p>
+      {% endif %}
+
+      <div class="create-post-actions">
+        <button type="submit" class="btn-primary">Share</button>
+        <a href="{% url 'feed' %}" class="btn-outline">Cancel</a>
+      </div>
+    </form>
+  </div>
+</div>
+
+<script>
+const imageInput = document.getElementById('imageInput');
+const videoInput = document.getElementById('videoInput');
+const uploadArea = document.getElementById('uploadArea');
+const placeholder = document.getElementById('uploadPlaceholder');
+const previewWrap = document.getElementById('mediaPreviewWrap');
+const imagePreview = document.getElementById('imagePreview');
+const videoPreview = document.getElementById('videoPreview');
+const captionTextarea = document.querySelector('textarea[name="caption"]');
+
+// Caption counter
+if (captionTextarea) {
+  captionTextarea.addEventListener('input', () => {
+    document.getElementById('captionCount').textContent = captionTextarea.value.length;
+  });
+}
+
+// Drag and drop
+uploadArea.addEventListener('dragover', e => { e.preventDefault(); uploadArea.classList.add('dragover'); });
+uploadArea.addEventListener('dragleave', () => uploadArea.classList.remove('dragover'));
+uploadArea.addEventListener('drop', e => {
+  e.preventDefault();
+  uploadArea.classList.remove('dragover');
+  const file = e.dataTransfer.files[0];
+  if (file) handleFile(file);
+});
+
+imageInput.addEventListener('change', () => {
+  if (imageInput.files[0]) handleFile(imageInput.files[0]);
+});
+
+// Also allow clicking for video
+uploadArea.addEventListener('click', e => {
+  if (e.target.closest('.remove-media-btn')) return;
+});
+
+function handleFile(file) {
+  const isVideo = file.type.startsWith('video/');
+  placeholder.style.display = 'none';
+  previewWrap.style.display = 'block';
+
+  if (isVideo) {
+    videoInput.files = imageInput.files;  // trick - use DataTransfer
+    const dt = new DataTransfer();
+    dt.items.add(file);
+    videoInput.files = dt.files;
+    imageInput.value = '';
+    const url = URL.createObjectURL(file);
+    videoPreview.src = url;
+    videoPreview.style.display = 'block';
+    imagePreview.style.display = 'none';
+  } else {
+    const dt = new DataTransfer();
+    dt.items.add(file);
+    imageInput.files = dt.files;
+    videoInput.value = '';
+    const reader = new FileReader();
+    reader.onload = e => {
+      imagePreview.src = e.target.result;
+      imagePreview.style.display = 'block';
+      videoPreview.style.display = 'none';
+    };
+    reader.readAsDataURL(file);
+  }
+}
+
+function removeMedia(e) {
+  e.stopPropagation();
+  imageInput.value = '';
+  videoInput.value = '';
+  imagePreview.style.display = 'none';
+  videoPreview.style.display = 'none';
+  previewWrap.style.display = 'none';
+  placeholder.style.display = 'flex';
+}
+</script>
+{% endblock %}

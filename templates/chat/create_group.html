@@ -1,0 +1,110 @@
+{% extends 'base.html' %}
+{% block title %}New Group — Snapgram{% endblock %}
+{% block content %}
+<div class="create-group-container">
+  <div class="create-group-card">
+    <div class="create-group-header">
+      <a href="{% url 'inbox' %}" class="chat-back-btn"><i class="fa-solid fa-arrow-left"></i></a>
+      <h2>New Group Chat</h2>
+    </div>
+
+    <form method="post" enctype="multipart/form-data" class="create-group-form">
+      {% csrf_token %}
+
+      <!-- Group avatar -->
+      <div class="group-avatar-upload">
+        <div class="group-avatar-preview" id="groupAvatarPreview">
+          <i class="fa-solid fa-camera"></i>
+        </div>
+        <label for="id_avatar" class="group-avatar-label">Add group photo</label>
+        <input type="file" name="avatar" id="id_avatar" accept="image/*" style="display:none"/>
+      </div>
+
+      <!-- Name -->
+      <div class="form-group">
+        <label class="form-label">Group Name <span class="required">*</span></label>
+        <input type="text" name="name" class="form-input" placeholder="Enter group name..." required maxlength="100"/>
+      </div>
+
+      <!-- Description -->
+      <div class="form-group">
+        <label class="form-label">Description <span class="optional">(optional)</span></label>
+        <input type="text" name="description" class="form-input" placeholder="What's this group about?" maxlength="200"/>
+      </div>
+
+      <!-- Members -->
+      <div class="form-group">
+        <label class="form-label">Add Members</label>
+        <div class="member-search-wrap">
+          <i class="fa-solid fa-magnifying-glass"></i>
+          <input type="text" id="memberSearchInput" class="member-search-input" placeholder="Search your connections..." autocomplete="off"/>
+        </div>
+
+        <div class="member-list" id="memberList">
+          {% for u in connected_users %}
+          <label class="member-item" id="member-{{ u.id }}">
+            <div class="member-item-left">
+              {% if u.profile.profile_pic %}
+                <img src="{{ u.profile.profile_pic.url }}" class="member-avatar" alt="{{ u.username }}"/>
+              {% else %}
+                <div class="member-avatar-placeholder">{{ u.username|first|upper }}</div>
+              {% endif %}
+              <div class="member-info">
+                <span class="member-username">{{ u.username }}</span>
+                <span class="member-fullname">{{ u.get_full_name }}</span>
+              </div>
+            </div>
+            <div class="member-checkbox-wrap">
+              <input type="checkbox" name="members" value="{{ u.id }}" class="member-checkbox" id="chk-{{ u.id }}" onchange="updateSelected()"/>
+              <span class="custom-checkbox"></span>
+            </div>
+          </label>
+          {% empty %}
+          <p class="no-connections">Follow people to add them to a group!</p>
+          {% endfor %}
+        </div>
+
+        <!-- Selected count -->
+        <div class="selected-count" id="selectedCount" style="display:none;">
+          <span id="selectedNum">0</span> member(s) selected
+        </div>
+      </div>
+
+      <button type="submit" class="btn-primary btn-create-group">
+        <i class="fa-solid fa-people-group"></i> Create Group
+      </button>
+    </form>
+  </div>
+</div>
+
+<script>
+// Avatar preview
+document.getElementById('id_avatar').addEventListener('change', function() {
+  const file = this.files[0];
+  if (!file) return;
+  const reader = new FileReader();
+  reader.onload = e => {
+    const preview = document.getElementById('groupAvatarPreview');
+    preview.innerHTML = `<img src="${e.target.result}" alt="preview"/>`;
+  };
+  reader.readAsDataURL(file);
+});
+
+// Member search
+document.getElementById('memberSearchInput').addEventListener('input', function() {
+  const q = this.value.toLowerCase();
+  document.querySelectorAll('.member-item').forEach(item => {
+    const name = item.querySelector('.member-username').textContent.toLowerCase();
+    item.style.display = name.includes(q) ? 'flex' : 'none';
+  });
+});
+
+// Selected count
+function updateSelected() {
+  const count = document.querySelectorAll('.member-checkbox:checked').length;
+  const el = document.getElementById('selectedCount');
+  document.getElementById('selectedNum').textContent = count;
+  el.style.display = count > 0 ? 'block' : 'none';
+}
+</script>
+{% endblock %}

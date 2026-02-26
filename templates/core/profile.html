@@ -1,0 +1,112 @@
+{% extends 'base.html' %}
+{% block title %}{{ profile_user.username }} — Snapgram{% endblock %}
+{% block content %}
+<div class="profile-container">
+  <!-- Profile Header -->
+  <div class="profile-header">
+    <div class="profile-pic-wrap">
+      {% if profile.profile_pic %}
+        <img src="{{ profile.profile_pic.url }}" class="profile-pic" alt="{{ profile_user.username }}"/>
+      {% else %}
+        <div class="profile-pic-placeholder">{{ profile_user.username|first|upper }}</div>
+      {% endif %}
+    </div>
+
+    <div class="profile-info">
+      <div class="profile-top-row">
+        <h2 class="profile-username">{{ profile_user.username }}</h2>
+        {% if profile_user == request.user %}
+          <a href="{% url 'edit_profile' %}" class="btn-outline">Edit Profile</a>
+          <a href="{% url 'logout' %}" class="btn-outline">Log Out</a>
+        {% else %}
+          <button class="btn-follow {% if is_following %}following{% endif %}"
+                  id="follow-btn"
+                  onclick="toggleFollow('{{ profile_user.username }}')">
+            {% if is_following %}Following{% else %}Follow{% endif %}
+          </button>
+          <a href="{% url 'conversation' username=profile_user.username %}" class="btn-outline">Message</a>
+        {% endif %}
+      </div>
+
+      <div class="profile-stats">
+        <div class="stat">
+          <span class="stat-num">{{ posts.count }}</span>
+          <span class="stat-label">posts</span>
+        </div>
+        <div class="stat" id="followers-stat">
+          <span class="stat-num" id="followers-count">{{ followers.count }}</span>
+          <span class="stat-label">followers</span>
+        </div>
+        <div class="stat">
+          <span class="stat-num">{{ following.count }}</span>
+          <span class="stat-label">following</span>
+        </div>
+      </div>
+
+      <div class="profile-bio-section">
+        {% if profile_user.get_full_name %}
+          <p class="profile-fullname">{{ profile_user.get_full_name }}</p>
+        {% endif %}
+        {% if profile.bio %}
+          <p class="profile-bio">{{ profile.bio }}</p>
+        {% endif %}
+      </div>
+    </div>
+  </div>
+
+  <!-- Posts Grid -->
+  <div class="profile-divider"></div>
+  <div class="posts-grid-header">
+    <i class="fa-solid fa-grid-2"></i> POSTS
+  </div>
+
+  {% if posts %}
+  <div class="posts-grid">
+    {% for post in posts %}
+    <a href="{% url 'post_detail' post.id %}" class="grid-item">
+      {% if post.video %}
+        <div class="grid-video-thumb">
+          <i class="fa-solid fa-play"></i>
+        </div>
+      {% else %}
+        <img src="{{ post.image.url }}" alt="post" loading="lazy"/>
+      {% endif %}
+      <div class="grid-overlay">
+        <span><i class="fa-solid fa-heart"></i> {{ post.likes_count }}</span>
+        <span><i class="fa-regular fa-comment"></i> {{ post.comments.count }}</span>
+      </div>
+    </a>
+    {% endfor %}
+  </div>
+  {% else %}
+  <div class="empty-posts">
+    <i class="fa-regular fa-image"></i>
+    <h3>No Posts Yet</h3>
+    {% if profile_user == request.user %}
+      <a href="{% url 'create_post' %}" class="btn-primary">Share your first photo</a>
+    {% endif %}
+  </div>
+  {% endif %}
+</div>
+
+<script>
+function toggleFollow(username) {
+  const btn = document.getElementById('follow-btn');
+  fetch(`/profile/${username}/follow/`, {
+    method: 'POST',
+    headers: {'X-CSRFToken': '{{ csrf_token }}'},
+  })
+  .then(r => r.json())
+  .then(data => {
+    if (data.following) {
+      btn.textContent = 'Following';
+      btn.classList.add('following');
+    } else {
+      btn.textContent = 'Follow';
+      btn.classList.remove('following');
+    }
+    document.getElementById('followers-count').textContent = data.followers_count;
+  });
+}
+</script>
+{% endblock %}

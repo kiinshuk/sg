@@ -1,0 +1,70 @@
+{% extends 'base.html' %}
+{% block title %}Edit Profile — Snapgram{% endblock %}
+{% block content %}
+<div class="settings-container">
+  <div class="settings-card">
+    <h2 class="settings-title">Edit Profile</h2>
+    <form method="post" enctype="multipart/form-data" class="settings-form">
+      {% csrf_token %}
+
+      <!-- Profile Pic Preview -->
+      <div class="pic-upload-wrap">
+        {% if request.user.profile.profile_pic %}
+          <img src="{{ request.user.profile.profile_pic.url }}" class="pic-preview" id="picPreview" alt="profile"/>
+        {% else %}
+          <div class="pic-preview-placeholder" id="picPreview">{{ request.user.username|first|upper }}</div>
+        {% endif %}
+        <label for="{{ form.profile_pic.id_for_label }}" class="pic-upload-label">
+          <i class="fa-solid fa-camera"></i> Change Photo
+        </label>
+        {{ form.profile_pic }}
+      </div>
+
+      <div class="form-group">
+        <label class="form-label">First Name</label>
+        <input type="text" name="first_name" class="form-input" value="{{ request.user.first_name }}" placeholder="First name"/>
+      </div>
+      <div class="form-group">
+        <label class="form-label">Last Name</label>
+        <input type="text" name="last_name" class="form-input" value="{{ request.user.last_name }}" placeholder="Last name"/>
+      </div>
+      <div class="form-group">
+        <label class="form-label">Username</label>
+        <input type="text" class="form-input" value="{{ request.user.username }}" disabled/>
+      </div>
+      <div class="form-group">
+        <label class="form-label">Bio</label>
+        {{ form.bio }}
+        {% if form.bio.errors %}
+          <span class="form-error">{{ form.bio.errors.0 }}</span>
+        {% endif %}
+      </div>
+
+      <button type="submit" class="btn-primary">Save Changes</button>
+      <a href="{% url 'profile' username=request.user.username %}" class="btn-outline">Cancel</a>
+    </form>
+  </div>
+</div>
+
+<script>
+document.getElementById('id_profile_pic').addEventListener('change', function(e) {
+  const file = e.target.files[0];
+  if (file) {
+    const reader = new FileReader();
+    reader.onload = function(ev) {
+      const preview = document.getElementById('picPreview');
+      if (preview.tagName === 'IMG') {
+        preview.src = ev.target.result;
+      } else {
+        const img = document.createElement('img');
+        img.src = ev.target.result;
+        img.className = 'pic-preview';
+        img.id = 'picPreview';
+        preview.replaceWith(img);
+      }
+    };
+    reader.readAsDataURL(file);
+  }
+});
+</script>
+{% endblock %}

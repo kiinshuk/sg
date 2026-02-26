@@ -1,0 +1,29 @@
+{% extends 'base.html' %}
+{% block title %}Sign Up — Snapgram{% endblock %}
+{% block content %}
+<div class="auth-container">
+  <div class="auth-card">
+    <div class="auth-logo">Snapgram</div>
+    <p class="auth-tagline">Sign up to see photos and videos from your friends.</p>
+    <form method="post" class="auth-form">
+      {% csrf_token %}
+      {% for field in form %}
+        <div class="form-group">
+          {{ field }}
+          {% if field.errors %}
+            {% for error in field.errors %}
+              <span class="form-error">{{ error }}</span>
+            {% endfor %}
+          {% endif %}
+        </div>
+      {% endfor %}
+      <button type="submit" class="btn-primary">Sign Up</button>
+    </form>
+    <div class="auth-divider"><span>OR</span></div>
+    <p class="auth-switch">Have an account? <a href="{% url 'login' %}">Log in</a></p>
+  </div>
+  <div class="auth-card auth-alt">
+    <p>Already have an account? <a href="{% url 'login' %}">Log in</a></p>
+  </div>
+</div>
+{% endblock %}

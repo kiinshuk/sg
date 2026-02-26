@@ -1,0 +1,176 @@
+{% extends 'base.html' %}
+{% block title %}Messages — Snapgram{% endblock %}
+{% block content %}
+<div class="inbox-layout">
+
+  <!-- ── LEFT PANEL: conversation list ── -->
+  <div class="inbox-panel" id="inboxPanel">
+    <div class="inbox-panel-header">
+      <h2 class="inbox-panel-title">{{ request.user.username }}</h2>
+      <div class="inbox-panel-actions">
+        <a href="{% url 'create_group' %}" class="icon-action-btn" title="New Group">
+          <i class="fa-solid fa-people-group"></i>
+        </a>
+        <button class="icon-action-btn" id="newDmBtn" title="New Message">
+          <i class="fa-solid fa-pen-to-square"></i>
+        </button>
+      </div>
+    </div>
+
+    <!-- New DM search dropdown -->
+    <div class="new-dm-box" id="newDmBox" style="display:none;">
+      <div class="new-dm-search">
+        <i class="fa-solid fa-magnifying-glass"></i>
+        <input type="text" placeholder="Search people..." id="dmSearchInput" autocomplete="off"/>
+      </div>
+      <div class="dm-search-results" id="dmSearchResults">
+        {% for u in connected_users %}
+        <a href="{% url 'conversation' username=u.username %}" class="dm-search-item">
+          {% if u.profile.profile_pic %}
+            <img src="{{ u.profile.profile_pic.url }}" class="dm-search-avatar" alt="{{ u.username }}"/>
+          {% else %}
+            <div class="dm-search-avatar-placeholder">{{ u.username|first|upper }}</div>
+          {% endif %}
+          <div>
+            <div class="dm-search-username">{{ u.username }}</div>
+            <div class="dm-search-fullname">{{ u.get_full_name }}</div>
+          </div>
+        </a>
+        {% endfor %}
+      </div>
+    </div>
+
+    <!-- Tabs: All / DMs / Groups -->
+    <div class="inbox-tabs">
+      <button class="inbox-tab active" data-tab="all">All</button>
+      <button class="inbox-tab" data-tab="dm">Direct</button>
+      <button class="inbox-tab" data-tab="group">Groups</button>
+    </div>
+
+    <!-- Conversations -->
+    <div class="convo-list" id="convoList">
+      {% if all_convos %}
+        {% for convo in all_convos %}
+          {% if convo.type == 'dm' %}
+          <a href="{% url 'conversation' username=convo.user.username %}"
+             class="convo-item {% if convo.unread > 0 %}unread{% endif %}"
+             data-tab="dm">
+            <div class="convo-avatar-wrap">
+              {% if convo.user.profile.profile_pic %}
+                <img src="{{ convo.user.profile.profile_pic.url }}" class="convo-avatar" alt="{{ convo.user.username }}"/>
+              {% else %}
+                <div class="convo-avatar-placeholder">{{ convo.user.username|first|upper }}</div>
+              {% endif %}
+            </div>
+            <div class="convo-info">
+              <div class="convo-row-top">
+                <span class="convo-name">{{ convo.user.username }}</span>
+                {% if convo.last_message %}
+                  <span class="convo-time">{{ convo.last_message.created_at|timesince|slice:":8" }}</span>
+                {% endif %}
+              </div>
+              <div class="convo-row-bottom">
+                <span class="convo-preview">
+                  {% if convo.last_message %}
+                    {% if convo.last_message.sender == request.user %}You: {% endif %}
+                    {{ convo.last_message.content|truncatechars:35 }}
+                  {% else %}
+                    Start a conversation
+                  {% endif %}
+                </span>
+                {% if convo.unread > 0 %}
+                  <span class="unread-dot"></span>
+                {% endif %}
+              </div>
+            </div>
+          </a>
+          {% else %}
+          <a href="{% url 'group_conversation' group_id=convo.group.id %}"
+             class="convo-item {% if convo.unread > 0 %}unread{% endif %}"
+             data-tab="group">
+            <div class="convo-avatar-wrap">
+              {% if convo.group.avatar %}
+                <img src="{{ convo.group.avatar.url }}" class="convo-avatar" alt="{{ convo.group.name }}"/>
+              {% else %}
+                <div class="convo-avatar-placeholder group-avatar">{{ convo.group.name|first|upper }}</div>
+              {% endif %}
+              <span class="group-badge-icon"><i class="fa-solid fa-people-group"></i></span>
+            </div>
+            <div class="convo-info">
+              <div class="convo-row-top">
+                <span class="convo-name">{{ convo.group.name }}</span>
+                {% if convo.last_message %}
+                  <span class="convo-time">{{ convo.last_message.created_at|timesince|slice:":8" }}</span>
+                {% endif %}
+              </div>
+              <div class="convo-row-bottom">
+                <span class="convo-preview">
+                  {% if convo.last_message %}
+                    {{ convo.last_message.sender.username }}: {{ convo.last_message.content|truncatechars:28 }}
+                  {% else %}
+                    No messages yet
+                  {% endif %}
+                </span>
+                {% if convo.unread > 0 %}
+                  <span class="unread-dot"></span>
+                {% endif %}
+              </div>
+            </div>
+          </a>
+          {% endif %}
+        {% endfor %}
+      {% else %}
+        <div class="inbox-empty">
+          <i class="fa-regular fa-paper-plane"></i>
+          <h3>Your Messages</h3>
+          <p>Send private messages to people you follow.</p>
+          <a href="{% url 'explore' %}" class="btn-primary">Find People</a>
+        </div>
+      {% endif %}
+    </div>
+  </div>
+
+  <!-- ── RIGHT PANEL: empty state on desktop ── -->
+  <div class="inbox-chat-placeholder">
+    <i class="fa-regular fa-paper-plane"></i>
+    <h3>Your Messages</h3>
+    <p>Select a conversation or start a new one.</p>
+    <a href="{% url 'create_group' %}" class="btn-outline">New Group Chat</a>
+  </div>
+
+</div>
+
+<script>
+// New DM toggle
+document.getElementById('newDmBtn').addEventListener('click', () => {
+  const box = document.getElementById('newDmBox');
+  box.style.display = box.style.display === 'none' ? 'block' : 'none';
+  if (box.style.display === 'block') document.getElementById('dmSearchInput').focus();
+});
+
+// DM search filter
+document.getElementById('dmSearchInput').addEventListener('input', function() {
+  const q = this.value.toLowerCase();
+  document.querySelectorAll('.dm-search-item').forEach(item => {
+    const name = item.querySelector('.dm-search-username').textContent.toLowerCase();
+    item.style.display = name.includes(q) ? 'flex' : 'none';
+  });
+});
+
+// Tabs
+document.querySelectorAll('.inbox-tab').forEach(tab => {
+  tab.addEventListener('click', function() {
+    document.querySelectorAll('.inbox-tab').forEach(t => t.classList.remove('active'));
+    this.classList.add('active');
+    const type = this.dataset.tab;
+    document.querySelectorAll('.convo-item').forEach(item => {
+      if (type === 'all' || item.dataset.tab === type) {
+        item.style.display = 'flex';
+      } else {
+        item.style.display = 'none';
+      }
+    });
+  });
+});
+</script>
+{% endblock %}

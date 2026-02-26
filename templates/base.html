@@ -1,0 +1,198 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0"/>
+  <title>{% block title %}Snapgram{% endblock %}</title>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css"/>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet"/>
+  {% load static %}
+  <link rel="stylesheet" href="{% static 'css/style.css' %}"/>
+  {% block extra_css %}{% endblock %}
+  <!-- Prevent dark mode flash -->
+  <script>
+    (function(){
+      var s = localStorage.getItem('snapgram-dark');
+      var prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+      if (s === '1' || (s === null && prefersDark)) {
+        document.documentElement.classList.add('dark');
+      }
+    })();
+  </script>
+</head>
+<body>
+
+{% if user.is_authenticated %}
+
+<!-- ── SIDEBAR OVERLAY (mobile) ── -->
+<div class="sidebar-overlay" id="sidebarOverlay" onclick="closeSidebar()"></div>
+
+<!-- ── LEFT SIDEBAR (desktop + mobile drawer) ── -->
+<aside class="sidebar" id="sidebar">
+  <div class="sidebar-inner">
+    <!-- Logo -->
+    <div class="sidebar-logo">
+      <a href="{% url 'feed' %}" class="logo-text">Snapgram</a>
+      <button class="sidebar-close-btn" onclick="closeSidebar()"><i class="fa-solid fa-xmark"></i></button>
+    </div>
+
+    <!-- Nav Links -->
+    <nav class="sidebar-nav">
+      <a href="{% url 'feed' %}" class="sidebar-link {% if request.resolver_match.url_name == 'feed' %}active{% endif %}">
+        <i class="fa-solid fa-house"></i><span>Home</span>
+      </a>
+      <a href="{% url 'explore' %}" class="sidebar-link {% if request.resolver_match.url_name == 'explore' %}active{% endif %}">
+        <i class="fa-solid fa-compass"></i><span>Explore</span>
+      </a>
+      <a href="{% url 'inbox' %}" class="sidebar-link {% if 'inbox' in request.resolver_match.url_name or 'conversation' in request.resolver_match.url_name or 'group' in request.resolver_match.url_name %}active{% endif %}">
+        <i class="fa-regular fa-paper-plane"></i><span>Messages</span>
+        {% if unread_messages_count > 0 %}<span class="nav-badge">{{ unread_messages_count }}</span>{% endif %}
+      </a>
+      <a href="{% url 'search' %}" class="sidebar-link {% if request.resolver_match.url_name == 'search' %}active{% endif %}">
+        <i class="fa-solid fa-magnifying-glass"></i><span>Search</span>
+      </a>
+      <a href="{% url 'create_post' %}" class="sidebar-link {% if request.resolver_match.url_name == 'create_post' %}active{% endif %}">
+        <i class="fa-regular fa-square-plus"></i><span>Create</span>
+      </a>
+      <a href="{% url 'profile' username=request.user.username %}" class="sidebar-link {% if request.resolver_match.url_name == 'profile' and request.resolver_match.kwargs.username == request.user.username %}active{% endif %}">
+        <span class="sidebar-avatar-wrap">
+          {% if request.user.profile.profile_pic %}
+            <img src="{{ request.user.profile.profile_pic.url }}" class="sidebar-avatar-img" alt="me"/>
+          {% else %}
+            <span class="sidebar-avatar-placeholder">{{ request.user.username|first|upper }}</span>
+          {% endif %}
+        </span>
+        <span>Profile</span>
+      </a>
+    </nav>
+
+    <!-- Bottom -->
+    <div class="sidebar-bottom">
+      <button class="dark-toggle-btn" onclick="toggleDark()" id="darkToggleBtn">
+        <i class="fa-solid fa-moon" id="darkToggleIcon"></i>
+        <span id="darkToggleLabel">Dark Mode</span>
+      </button>
+      <a href="{% url 'logout' %}" class="sidebar-link logout-link">
+        <i class="fa-solid fa-right-from-bracket"></i><span>Log Out</span>
+      </a>
+    </div>
+  </div>
+</aside>
+
+<!-- ── TOP BAR (mobile only) ── -->
+<header class="topbar" id="topbar">
+  <button class="topbar-btn" onclick="openSidebar()">
+    <i class="fa-solid fa-bars"></i>
+  </button>
+  <a href="{% url 'feed' %}" class="topbar-logo">Snapgram</a>
+  <div class="topbar-right">
+    <button class="topbar-btn" onclick="toggleDark()" title="Toggle dark mode">
+      <i class="fa-solid fa-moon" id="topbarDarkIcon"></i>
+    </button>
+    <a href="{% url 'inbox' %}" class="topbar-btn" style="position:relative;">
+      <i class="fa-regular fa-paper-plane"></i>
+      {% if unread_messages_count > 0 %}<span class="badge-dot"></span>{% endif %}
+    </a>
+  </div>
+</header>
+
+<!-- ── BOTTOM NAV (mobile only) ── -->
+<nav class="bottom-nav">
+  <a href="{% url 'feed' %}" class="bottom-nav-item {% if request.resolver_match.url_name == 'feed' %}active{% endif %}">
+    <i class="fa-solid fa-house"></i>
+  </a>
+  <a href="{% url 'explore' %}" class="bottom-nav-item {% if request.resolver_match.url_name == 'explore' %}active{% endif %}">
+    <i class="fa-solid fa-compass"></i>
+  </a>
+  <a href="{% url 'create_post' %}" class="bottom-nav-item create-btn">
+    <i class="fa-solid fa-plus"></i>
+  </a>
+  <a href="{% url 'search' %}" class="bottom-nav-item {% if request.resolver_match.url_name == 'search' %}active{% endif %}">
+    <i class="fa-solid fa-magnifying-glass"></i>
+  </a>
+  <a href="{% url 'profile' username=request.user.username %}" class="bottom-nav-item {% if request.resolver_match.url_name == 'profile' and request.resolver_match.kwargs.username == request.user.username %}active{% endif %}">
+    {% if request.user.profile.profile_pic %}
+      <img src="{{ request.user.profile.profile_pic.url }}" class="bottom-nav-avatar" alt="me"/>
+    {% else %}
+      <span class="bottom-nav-avatar-placeholder">{{ request.user.username|first|upper }}</span>
+    {% endif %}
+  </a>
+</nav>
+
+{% endif %}
+
+<!-- ── MAIN CONTENT ── -->
+<main class="main-content {% if not user.is_authenticated %}auth-page{% endif %}">
+  {% if messages %}
+    <div class="toast-container" id="toastContainer">
+      {% for message in messages %}
+        <div class="toast toast-{{ message.tags }}">
+          <span>{{ message }}</span>
+          <button onclick="this.parentElement.remove()"><i class="fa-solid fa-xmark"></i></button>
+        </div>
+      {% endfor %}
+    </div>
+  {% endif %}
+  {% block content %}{% endblock %}
+</main>
+
+<script>
+// ── Sidebar ──
+function openSidebar() {
+  document.getElementById('sidebar').classList.add('open');
+  document.getElementById('sidebarOverlay').classList.add('show');
+  document.body.style.overflow = 'hidden';
+}
+function closeSidebar() {
+  document.getElementById('sidebar').classList.remove('open');
+  document.getElementById('sidebarOverlay').classList.remove('show');
+  document.body.style.overflow = '';
+}
+
+// ── Dark Mode ──
+function applyDark(dark) {
+  if (dark) {
+    document.documentElement.classList.add('dark');
+  } else {
+    document.documentElement.classList.remove('dark');
+  }
+  // update icons & label
+  const icon = document.getElementById('darkToggleIcon');
+  const label = document.getElementById('darkToggleLabel');
+  const topIcon = document.getElementById('topbarDarkIcon');
+  if (icon) {
+    icon.className = dark ? 'fa-solid fa-sun' : 'fa-solid fa-moon';
+    label.textContent = dark ? 'Light Mode' : 'Dark Mode';
+  }
+  if (topIcon) {
+    topIcon.className = dark ? 'fa-solid fa-sun' : 'fa-solid fa-moon';
+  }
+}
+
+function toggleDark() {
+  const isDark = !document.documentElement.classList.contains('dark');
+  localStorage.setItem('snapgram-dark', isDark ? '1' : '0');
+  applyDark(isDark);
+}
+
+// Apply on load (before paint)
+(function() {
+  const saved = localStorage.getItem('snapgram-dark');
+  const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+  const shouldDark = saved !== null ? saved === '1' : prefersDark;
+  applyDark(shouldDark);
+})();
+
+// ── Auto-dismiss toasts ──
+setTimeout(() => {
+  document.querySelectorAll('.toast').forEach(t => {
+    t.style.transition = 'opacity 0.4s ease, transform 0.4s ease';
+    t.style.opacity = '0';
+    t.style.transform = 'translateY(-8px)';
+    setTimeout(() => t.remove(), 400);
+  });
+}, 4000);
+</script>
+{% block extra_js %}{% endblock %}
+</body>
+</html>

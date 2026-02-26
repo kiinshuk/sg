@@ -1,0 +1,269 @@
+{% extends 'base.html' %}
+{% block title %}{{ group.name }} — Snapgram{% endblock %}
+{% block content %}
+<div class="chat-layout">
+
+  <!-- LEFT: sidebar list -->
+  <div class="chat-sidebar-panel">
+    <div class="inbox-panel-header">
+      <h2 class="inbox-panel-title">Messages</h2>
+      <a href="{% url 'create_group' %}" class="icon-action-btn" title="New Group">
+        <i class="fa-solid fa-people-group"></i>
+      </a>
+    </div>
+    <div class="convo-list chat-sidebar-list">
+      {% for u in connected_users %}
+      <a href="{% url 'conversation' username=u.username %}" class="convo-item">
+        <div class="convo-avatar-wrap">
+          {% if u.profile.profile_pic %}
+            <img src="{{ u.profile.profile_pic.url }}" class="convo-avatar" alt="{{ u.username }}"/>
+          {% else %}
+            <div class="convo-avatar-placeholder">{{ u.username|first|upper }}</div>
+          {% endif %}
+        </div>
+        <div class="convo-info">
+          <span class="convo-name">{{ u.username }}</span>
+        </div>
+      </a>
+      {% endfor %}
+    </div>
+  </div>
+
+  <!-- RIGHT: Group chat window -->
+  <div class="chat-window">
+    <!-- Header -->
+    <div class="chat-header">
+      <a href="{% url 'inbox' %}" class="chat-back-btn"><i class="fa-solid fa-arrow-left"></i></a>
+      <div class="chat-header-user" onclick="toggleGroupInfo()">
+        {% if group.avatar %}
+          <img src="{{ group.avatar.url }}" class="chat-header-avatar" alt="{{ group.name }}"/>
+        {% else %}
+          <div class="chat-header-avatar-placeholder group-color">{{ group.name|first|upper }}</div>
+        {% endif %}
+        <div class="chat-header-info">
+          <span class="chat-header-name">{{ group.name }}</span>
+          <span class="chat-header-sub">{{ members.count }} members</span>
+        </div>
+      </div>
+      <button class="chat-header-action" onclick="toggleGroupInfo()">
+        <i class="fa-solid fa-circle-info"></i>
+      </button>
+    </div>
+
+    <!-- Messages -->
+    <div class="chat-messages" id="chatMessages">
+      {% for msg in messages %}
+      <div class="msg-row {% if msg.sender == request.user %}sent{% else %}received{% endif %}" data-id="{{ msg.id }}">
+        {% if msg.sender != request.user %}
+          {% if msg.sender.profile.profile_pic %}
+            <img src="{{ msg.sender.profile.profile_pic.url }}" class="msg-avatar" alt="{{ msg.sender.username }}"/>
+          {% else %}
+            <div class="msg-avatar msg-avatar-placeholder">{{ msg.sender.username|first|upper }}</div>
+          {% endif %}
+        {% endif %}
+        <div class="msg-content">
+          {% if msg.sender != request.user %}
+            <div class="msg-sender-name">{{ msg.sender.username }}</div>
+          {% endif %}
+          <div class="msg-bubble">{{ msg.content }}</div>
+          <div class="msg-meta">{{ msg.created_at|date:"g:i A" }}</div>
+        </div>
+      </div>
+      {% empty %}
+      <div class="chat-empty-state">
+        {% if group.avatar %}
+          <img src="{{ group.avatar.url }}" class="chat-empty-avatar" alt="{{ group.name }}"/>
+        {% else %}
+          <div class="chat-empty-avatar-placeholder">{{ group.name|first|upper }}</div>
+        {% endif %}
+        <h3>{{ group.name }}</h3>
+        {% if group.description %}<p>{{ group.description }}</p>{% endif %}
+        <span class="chat-empty-hint">{{ members.count }} members · Say hi 👋</span>
+      </div>
+      {% endfor %}
+    </div>
+
+    <!-- Input -->
+    <div class="chat-input-bar">
+      <div class="chat-input-wrap">
+        <input type="text" id="msgInput" class="chat-input" placeholder="Message {{ group.name }}..." autocomplete="off"/>
+        <button class="chat-send-btn" onclick="sendMessage()">
+          <i class="fa-solid fa-paper-plane"></i>
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- GROUP INFO PANEL -->
+  <div class="group-info-panel" id="groupInfoPanel">
+    <div class="group-info-header">
+      <h3>Group Info</h3>
+      <button onclick="toggleGroupInfo()"><i class="fa-solid fa-xmark"></i></button>
+    </div>
+    <div class="group-info-body">
+      <div class="group-info-avatar">
+        {% if group.avatar %}
+          <img src="{{ group.avatar.url }}" class="group-info-pic" alt="{{ group.name }}"/>
+        {% else %}
+          <div class="group-info-pic-placeholder">{{ group.name|first|upper }}</div>
+        {% endif %}
+      </div>
+      <h4 class="group-info-name">{{ group.name }}</h4>
+      {% if group.description %}<p class="group-info-desc">{{ group.description }}</p>{% endif %}
+      <p class="group-info-meta">{{ members.count }} members · Created {{ group.created_at|timesince }} ago</p>
+
+      <div class="group-members-section">
+        <h5>Members</h5>
+        {% for m in members %}
+        <div class="group-member-item">
+          <a href="{% url 'profile' username=m.user.username %}" class="group-member-link">
+            {% if m.user.profile.profile_pic %}
+              <img src="{{ m.user.profile.profile_pic.url }}" class="group-member-avatar" alt="{{ m.user.username }}"/>
+            {% else %}
+              <div class="group-member-avatar-placeholder">{{ m.user.username|first|upper }}</div>
+            {% endif %}
+            <div>
+              <span class="group-member-name">{{ m.user.username }}</span>
+              {% if m.role == 'admin' %}<span class="group-member-role">Admin</span>{% endif %}
+            </div>
+          </a>
+          {% if user_membership.role == 'admin' and m.user != request.user %}
+          <button class="remove-member-btn" onclick="removeMember({{ m.user.id }}, this)" title="Remove">
+            <i class="fa-solid fa-xmark"></i>
+          </button>
+          {% endif %}
+        </div>
+        {% endfor %}
+      </div>
+
+      {% if user_membership.role == 'admin' %}
+      <div class="add-member-section">
+        <h5>Add Members</h5>
+        <div class="add-member-search">
+          <input type="text" id="addMemberInput" placeholder="Search people..." autocomplete="off"/>
+        </div>
+        <div id="addMemberResults">
+          {% for u in connected_users %}
+            {% if not group.members.all|length or u not in group.members.all %}
+            <div class="add-member-item" data-uid="{{ u.id }}" data-name="{{ u.username }}">
+              {% if u.profile.profile_pic %}
+                <img src="{{ u.profile.profile_pic.url }}" class="group-member-avatar" alt="{{ u.username }}"/>
+              {% else %}
+                <div class="group-member-avatar-placeholder">{{ u.username|first|upper }}</div>
+              {% endif %}
+              <span>{{ u.username }}</span>
+              <button onclick="addMember({{ u.id }}, this)">Add</button>
+            </div>
+            {% endif %}
+          {% endfor %}
+        </div>
+      </div>
+      {% endif %}
+
+      <div class="group-info-actions">
+        <form method="post" action="{% url 'leave_group' group_id=group.id %}" onsubmit="return confirm('Leave this group?')">
+          {% csrf_token %}
+          <button type="submit" class="btn-danger-outline">Leave Group</button>
+        </form>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+const groupId = {{ group.id }};
+const csrfToken = '{{ csrf_token }}';
+let lastId = {% if messages %}{{ messages.last.id|default:0 }}{% else %}0{% endif %};
+const chatMessages = document.getElementById('chatMessages');
+
+scrollToBottom();
+function scrollToBottom() { chatMessages.scrollTop = chatMessages.scrollHeight; }
+
+function sendMessage() {
+  const input = document.getElementById('msgInput');
+  const content = input.value.trim();
+  if (!content) return;
+  input.value = '';
+  fetch(`/chat/group/${groupId}/send/`, {
+    method: 'POST',
+    headers: {'X-CSRFToken': csrfToken, 'Content-Type': 'application/x-www-form-urlencoded'},
+    body: `content=${encodeURIComponent(content)}`,
+  })
+  .then(r => r.json())
+  .then(data => {
+    if (data.status === 'ok') { appendMsg(data, true); lastId = data.id; }
+  });
+}
+
+function appendMsg(data, isMe) {
+  const row = document.createElement('div');
+  row.className = `msg-row ${isMe ? 'sent' : 'received'}`;
+  row.setAttribute('data-id', data.id || Date.now());
+  let avatarHtml = '';
+  if (!isMe) {
+    avatarHtml = data.avatar
+      ? `<img src="${data.avatar}" class="msg-avatar" alt="${data.sender}"/>`
+      : `<div class="msg-avatar msg-avatar-placeholder">${data.sender[0].toUpperCase()}</div>`;
+  }
+  const senderName = !isMe ? `<div class="msg-sender-name">${data.sender}</div>` : '';
+  row.innerHTML = `${avatarHtml}<div class="msg-content">${senderName}<div class="msg-bubble">${escHtml(data.content)}</div><div class="msg-meta">${data.time}</div></div>`;
+  chatMessages.appendChild(row);
+  scrollToBottom();
+}
+
+function escHtml(t) {
+  const d = document.createElement('div');
+  d.appendChild(document.createTextNode(t));
+  return d.innerHTML;
+}
+
+function poll() {
+  fetch(`/chat/group/${groupId}/messages/?after=${lastId}`)
+  .then(r => r.json())
+  .then(data => {
+    data.messages.forEach(m => { if (m.id > lastId) { lastId = m.id; if (!m.is_me) appendMsg(m, false); } });
+  });
+}
+setInterval(poll, 3000);
+
+document.getElementById('msgInput').addEventListener('keydown', e => {
+  if (e.key === 'Enter') { e.preventDefault(); sendMessage(); }
+});
+
+function toggleGroupInfo() {
+  document.getElementById('groupInfoPanel').classList.toggle('open');
+}
+
+function addMember(userId, btn) {
+  fetch(`/chat/group/${groupId}/add-member/`, {
+    method: 'POST',
+    headers: {'X-CSRFToken': csrfToken, 'Content-Type': 'application/x-www-form-urlencoded'},
+    body: `user_id=${userId}`,
+  })
+  .then(r => r.json())
+  .then(data => {
+    if (data.status === 'ok') { btn.textContent = 'Added'; btn.disabled = true; }
+  });
+}
+
+function removeMember(userId, btn) {
+  if (!confirm('Remove this member?')) return;
+  fetch(`/chat/group/${groupId}/remove-member/`, {
+    method: 'POST',
+    headers: {'X-CSRFToken': csrfToken, 'Content-Type': 'application/x-www-form-urlencoded'},
+    body: `user_id=${userId}`,
+  })
+  .then(r => r.json())
+  .then(data => {
+    if (data.status === 'ok') { btn.closest('.group-member-item').remove(); }
+  });
+}
+
+document.getElementById('addMemberInput').addEventListener('input', function() {
+  const q = this.value.toLowerCase();
+  document.querySelectorAll('.add-member-item').forEach(item => {
+    item.style.display = item.dataset.name.toLowerCase().includes(q) ? 'flex' : 'none';
+  });
+});
+</script>
+{% endblock %}

@@ -1,0 +1,118 @@
+{% extends 'base.html' %}
+{% block title %}Post — Snapgram{% endblock %}
+{% block content %}
+<div class="post-detail-container">
+  <div class="post-detail-card">
+    <!-- Media -->
+    <div class="post-detail-media">
+      {% if post.video %}
+        <video controls class="post-detail-video">
+          <source src="{{ post.video.url }}">
+        </video>
+      {% elif post.image %}
+        <img src="{{ post.image.url }}" class="post-detail-image" alt="post"/>
+      {% endif %}
+    </div>
+
+    <!-- Right Panel -->
+    <div class="post-detail-panel">
+      <!-- Header -->
+      <div class="post-detail-header">
+        <a href="{% url 'profile' username=post.user.username %}" class="post-user">
+          {% if post.user.profile.profile_pic %}
+            <img src="{{ post.user.profile.profile_pic.url }}" class="post-avatar" alt="{{ post.user.username }}"/>
+          {% else %}
+            <div class="post-avatar-placeholder">{{ post.user.username|first|upper }}</div>
+          {% endif %}
+          <span class="post-username">{{ post.user.username }}</span>
+        </a>
+        {% if post.user == request.user %}
+        <form method="post" action="{% url 'delete_post' post.id %}" onsubmit="return confirm('Delete?')">
+          {% csrf_token %}
+          <button class="post-menu-btn" type="submit"><i class="fa-solid fa-trash"></i></button>
+        </form>
+        {% endif %}
+      </div>
+
+      <!-- Caption -->
+      {% if post.caption %}
+      <div class="post-detail-caption">
+        <div class="post-avatar-sm">
+          {% if post.user.profile.profile_pic %}
+            <img src="{{ post.user.profile.profile_pic.url }}" class="post-avatar-small" alt="{{ post.user.username }}"/>
+          {% else %}
+            <div class="post-avatar-placeholder-sm">{{ post.user.username|first|upper }}</div>
+          {% endif %}
+        </div>
+        <div>
+          <a href="{% url 'profile' username=post.user.username %}" class="caption-username">{{ post.user.username }}</a>
+          {{ post.caption }}
+          <div class="comment-time">{{ post.created_at|timesince }} ago</div>
+        </div>
+      </div>
+      {% endif %}
+
+      <!-- Comments -->
+      <div class="post-detail-comments">
+        {% for comment in comments %}
+        <div class="comment-item">
+          <a href="{% url 'profile' username=comment.user.username %}">
+            {% if comment.user.profile.profile_pic %}
+              <img src="{{ comment.user.profile.profile_pic.url }}" class="comment-avatar" alt="{{ comment.user.username }}"/>
+            {% else %}
+              <div class="comment-avatar-placeholder">{{ comment.user.username|first|upper }}</div>
+            {% endif %}
+          </a>
+          <div class="comment-body">
+            <a href="{% url 'profile' username=comment.user.username %}" class="comment-username">{{ comment.user.username }}</a>
+            <span class="comment-text">{{ comment.text }}</span>
+            <div class="comment-time">{{ comment.created_at|timesince }} ago</div>
+          </div>
+        </div>
+        {% empty %}
+          <p class="no-comments">No comments yet. Be the first!</p>
+        {% endfor %}
+      </div>
+
+      <!-- Actions -->
+      <div class="post-detail-actions">
+        <button class="action-btn like-btn {% if liked %}liked{% endif %}"
+                onclick="toggleLike({{ post.id }}, this)">
+          <i class="{% if liked %}fa-solid{% else %}fa-regular{% endif %} fa-heart"></i>
+        </button>
+        <a href="#commentInput" class="action-btn"><i class="fa-regular fa-comment"></i></a>
+      </div>
+      <div class="post-detail-likes">
+        <strong><span id="likes-{{ post.id }}">{{ post.likes_count }}</span> likes</strong>
+      </div>
+      <div class="post-detail-time">{{ post.created_at|timesince }} ago</div>
+
+      <!-- Comment Form -->
+      <div class="post-detail-comment-form">
+        <form method="post" action="{% url 'add_comment' post.id %}">
+          {% csrf_token %}
+          <i class="fa-regular fa-face-smile"></i>
+          <input type="text" name="text" id="commentInput" class="comment-input" placeholder="Add a comment..." autocomplete="off"/>
+          <button type="submit" class="comment-post-btn">Post</button>
+        </form>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+function toggleLike(postId, btn) {
+  fetch(`/post/${postId}/like/`, {
+    method: 'POST',
+    headers: {'X-CSRFToken': '{{ csrf_token }}'},
+  })
+  .then(r => r.json())
+  .then(data => {
+    const icon = btn.querySelector('i');
+    if (data.liked) { icon.className = 'fa-solid fa-heart'; btn.classList.add('liked'); }
+    else { icon.className = 'fa-regular fa-heart'; btn.classList.remove('liked'); }
+    document.getElementById(`likes-${postId}`).textContent = data.likes_count;
+  });
+}
+</script>
+{% endblock %}
