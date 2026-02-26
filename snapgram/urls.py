@@ -7,4 +7,8 @@ urlpatterns = [
     path('admin/', admin.site.urls),
     path('', include('core.urls')),
     path('chat/', include('chat.urls')),
-] + static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)
+]
+
+# Serve media files locally in dev (Cloudinary handles it in production)
+if hasattr(settings, 'MEDIA_ROOT'):
+    urlpatterns += static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)
