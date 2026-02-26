@@ -122,7 +122,9 @@ if CLOUDINARY_CLOUD_NAME:
         secure     = True,
     )
     DEFAULT_FILE_STORAGE = 'cloudinary_storage.storage.MediaCloudinaryStorage'
-    MEDIA_URL = f'https://res.cloudinary.com/{CLOUDINARY_CLOUD_NAME}/'
+    # Cloudinary storage builds full URLs automatically — do NOT set MEDIA_URL to cloudinary base
+    MEDIA_URL = '/media/'
+    MEDIA_ROOT = BASE_DIR / 'media'
 else:
     # Local dev — use filesystem
     MEDIA_URL = '/media/'
