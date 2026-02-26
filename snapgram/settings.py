@@ -6,13 +6,23 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 # ── Security ──────────────────────────────────────────────────
 SECRET_KEY = os.environ.get('SECRET_KEY', 'django-insecure-snapgram-dev-key-change-in-production')
 DEBUG = os.environ.get('DEBUG', 'False') == 'True'
+
+# Allow all hosts by default — restrict via ALLOWED_HOSTS env var in production
 ALLOWED_HOSTS = os.environ.get('ALLOWED_HOSTS', '*').split(',')
 
-# Railway injects RAILWAY_STATIC_URL — allow it automatically
+# Auto-detect Railway domain for CSRF
 CSRF_TRUSTED_ORIGINS = []
-railway_url = os.environ.get('RAILWAY_STATIC_URL') or os.environ.get('RAILWAY_PUBLIC_DOMAIN')
-if railway_url:
-    CSRF_TRUSTED_ORIGINS.append(f'https://{railway_url}')
+# From env variable
+csrf_env = os.environ.get('CSRF_TRUSTED_ORIGINS', '')
+if csrf_env:
+    CSRF_TRUSTED_ORIGINS = [o.strip() for o in csrf_env.split(',')]
+# Auto-detect Railway public domain
+for key in ('RAILWAY_PUBLIC_DOMAIN', 'RAILWAY_STATIC_URL', 'RAILWAY_SERVICE_URL'):
+    val = os.environ.get(key, '')
+    if val:
+        origin = f'https://{val}' if not val.startswith('http') else val
+        if origin not in CSRF_TRUSTED_ORIGINS:
+            CSRF_TRUSTED_ORIGINS.append(origin)
 
 # ── Apps ──────────────────────────────────────────────────────
 INSTALLED_APPS = [
