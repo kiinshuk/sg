@@ -183,6 +183,27 @@ function toggleDark() {
   applyDark(shouldDark);
 })();
 
+// ── Broken image fallback ──
+document.addEventListener('DOMContentLoaded', () => {
+  document.querySelectorAll('img').forEach(img => {
+    img.addEventListener('error', function() {
+      // Replace broken img with a styled placeholder div
+      const div = document.createElement('div');
+      div.className = this.className + ' img-broken-placeholder';
+      div.style.cssText = `
+        width:${this.width || this.offsetWidth || 40}px;
+        height:${this.height || this.offsetHeight || 40}px;
+        background:var(--surface2);
+        border-radius:inherit;
+        display:flex;align-items:center;justify-content:center;
+        color:var(--text-4);font-size:20px;
+      `;
+      div.innerHTML = '<i class="fa-regular fa-image"></i>';
+      this.parentNode.replaceChild(div, this);
+    });
+  });
+});
+
 // ── Auto-dismiss toasts ──
 setTimeout(() => {
   document.querySelectorAll('.toast').forEach(t => {
