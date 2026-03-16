@@ -208,3 +208,7 @@ def add_comment(request, post_id):
             comment.post = post
             comment.save()
     return redirect(request.META.get('HTTP_REFERER', 'feed'))
+
+
+def donate(request):
+    return render(request, 'core/donate.html')

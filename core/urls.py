@@ -16,4 +16,5 @@ urlpatterns = [
     path('profile/<str:username>/', views.profile_view, name='profile'),
     path('profile/<str:username>/follow/', views.follow_user, name='follow_user'),
     path('settings/profile/', views.edit_profile, name='edit_profile'),
+    path('donate/', views.donate, name='donate'),
 ]
