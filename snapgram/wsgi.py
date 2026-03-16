@@ -8,6 +8,12 @@ https://docs.djangoproject.com/en/4.2/howto/deployment/wsgi/
 """
 
 import os
+import sys
+
+# Add project directory to Python path
+path = '/home/kiinshuk/snapgram'
+if path not in sys.path:
+    sys.path.insert(0, path)
 
 from django.core.wsgi import get_wsgi_application
 
