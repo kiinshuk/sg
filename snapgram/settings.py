@@ -72,12 +72,24 @@ TEMPLATES = [
 WSGI_APPLICATION = 'snapgram.wsgi.application'
 
 # ── Database ──────────────────────────────────────────────────
-# Use PostgreSQL on Railway if DATABASE_URL is set, else SQLite locally
 DATABASE_URL = os.environ.get('DATABASE_URL')
+MYSQL_DB = os.environ.get('MYSQL_DB')
+
 if DATABASE_URL:
     import dj_database_url
     DATABASES = {
         'default': dj_database_url.config(default=DATABASE_URL, conn_max_age=600)
+    }
+elif MYSQL_DB:
+    DATABASES = {
+        'default': {
+            'ENGINE': 'django.db.backends.mysql',
+            'NAME': os.environ.get('MYSQL_NAME'),
+            'USER': os.environ.get('MYSQL_USER'),
+            'PASSWORD': os.environ.get('MYSQL_PASSWORD'),
+            'HOST': os.environ.get('MYSQL_HOST'),
+            'PORT': os.environ.get('MYSQL_PORT', '3306'),
+        }
     }
 else:
     DATABASES = {
