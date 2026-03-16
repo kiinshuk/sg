@@ -29,10 +29,15 @@
       </div>
 
       <div class="profile-stats">
-        <div class="stat">
-          <span class="stat-num">{{ posts.count }}</span>
-          <span class="stat-label">posts</span>
+        <div class="stat" id="followers-stat" onclick="showFollowersModal()">
+          <span class="stat-num" id="followers-count">{{ followers.count }}</span>
+          <span class="stat-label">followers</span>
         </div>
+        <div class="stat" onclick="showFollowingModal()">
+          <span class="stat-num">{{ following.count }}</span>
+          <span class="stat-label">following</span>
+        </div>
+      </div>
         <div class="stat" id="followers-stat">
           <span class="stat-num" id="followers-count">{{ followers.count }}</span>
           <span class="stat-label">followers</span>
@@ -108,5 +113,107 @@ function toggleFollow(username) {
     document.getElementById('followers-count').textContent = data.followers_count;
   });
 }
+
+function toggleFollowFromModal(username, modalId) {
+  fetch(`/profile/${username}/follow/`, {
+    method: 'POST',
+    headers: {'X-CSRFToken': '{{ csrf_token }}'},
+  })
+  .then(r => r.json())
+  .then(data => {
+    const btn = event.target;
+    if (data.following) {
+      btn.textContent = 'Following';
+      btn.classList.add('following');
+    } else {
+      btn.textContent = 'Follow';
+      btn.classList.remove('following');
+    }
+    if (document.getElementById('follow-btn')) {
+      document.getElementById('follow-btn').textContent = data.following ? 'Following' : 'Follow';
+      document.getElementById('follow-btn').classList.toggle('following', data.following);
+    }
+    document.getElementById('followers-count').textContent = data.followers_count;
+  });
+}
+
+function showFollowersModal() {
+  document.getElementById('followers-modal').style.display = 'flex';
+}
+function showFollowingModal() {
+  document.getElementById('following-modal').style.display = 'flex';
+}
+function closeModal(id) {
+  document.getElementById(id).style.display = 'none';
+}
 </script>
+
+<!-- Followers Modal -->
+<div class="modal" id="followers-modal" onclick="closeModal('followers-modal')">
+  <div class="modal-content" onclick="event.stopPropagation()">
+    <div class="modal-header">
+      <h3>Followers</h3>
+      <button class="modal-close" onclick="closeModal('followers-modal')">&times;</button>
+    </div>
+    <div class="modal-list">
+      {% for f in followers %}
+      <div class="modal-user">
+        <a href="{% url 'profile' username=f.follower.username %}" class="modal-user-link">
+          {% if f.follower.profile.profile_pic %}
+            <img src="{{ f.follower.profile.profile_pic.url }}" class="modal-avatar" alt="{{ f.follower.username }}"/>
+          {% else %}
+            <div class="modal-avatar-placeholder">{{ f.follower.username|first|upper }}</div>
+          {% endif %}
+          <div class="modal-user-info">
+            <span class="modal-username">{{ f.follower.username }}</span>
+            <span class="modal-fullname">{{ f.follower.get_full_name }}</span>
+          </div>
+        </a>
+        {% if f.follower != request.user %}
+          {% if f.follower in request.user.profile.following.all %}
+          <button class="btn-follow following" onclick="toggleFollowFromModal('{{ f.follower.username }}', 'followers-modal')">Following</button>
+          {% else %}
+          <button class="btn-follow" onclick="toggleFollowFromModal('{{ f.follower.username }}', 'followers-modal')">Follow</button>
+          {% endif %}
+        {% endif %}
+      </div>
+      {% empty %}
+      <div class="modal-empty">No followers yet</div>
+      {% endfor %}
+    </div>
+  </div>
+</div>
+
+<!-- Following Modal -->
+<div class="modal" id="following-modal" onclick="closeModal('following-modal')">
+  <div class="modal-content" onclick="event.stopPropagation()">
+    <div class="modal-header">
+      <h3>Following</h3>
+      <button class="modal-close" onclick="closeModal('following-modal')">&times;</button>
+    </div>
+    <div class="modal-list">
+      {% for f in following %}
+      <div class="modal-user">
+        <a href="{% url 'profile' username=f.following.username %}" class="modal-user-link">
+          {% if f.following.profile.profile_pic %}
+            <img src="{{ f.following.profile.profile_pic.url }}" class="modal-avatar" alt="{{ f.following.username }}"/>
+          {% else %}
+            <div class="modal-avatar-placeholder">{{ f.following.username|first|upper }}</div>
+          {% endif %}
+          <div class="modal-user-info">
+            <span class="modal-username">{{ f.following.username }}</span>
+            <span class="modal-fullname">{{ f.following.get_full_name }}</span>
+          </div>
+        </a>
+        {% if f.following != request.user %}
+          <button class="btn-follow following" onclick="toggleFollowFromModal('{{ f.following.username }}', 'following-modal')">Following</button>
+          <a href="{% url 'conversation' username=f.following.username %}" class="btn-outline btn-small">Message</a>
+        {% endif %}
+      </div>
+      {% empty %}
+      <div class="modal-empty">Not following anyone yet</div>
+      {% endfor %}
+    </div>
+  </div>
+</div>
 {% endblock %}
