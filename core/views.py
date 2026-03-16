@@ -5,8 +5,11 @@ from django.contrib.auth.models import User
 from django.contrib import messages
 from django.http import JsonResponse
 from django.db.models import Q
+from django.core.paginator import Paginator
 from .models import Profile, Post, Like, Follow, Comment
 from .forms import SignUpForm, LoginForm, ProfileUpdateForm, PostForm, CommentForm
+
+POSTS_PER_PAGE = 9
 
 
 def signup_view(request):
@@ -53,18 +56,20 @@ def feed(request):
     following_users = Follow.objects.filter(follower=request.user).values_list('following', flat=True)
     posts = Post.objects.filter(
         Q(user__in=following_users) | Q(user=request.user)
-    ).select_related('user', 'user__profile').prefetch_related('likes', 'comments')
+    ).select_related('user', 'user__profile').prefetch_related('likes', 'comments').order_by('-created_at')
     
-    # Suggested users (not following, not self)
+    paginator = Paginator(posts, POSTS_PER_PAGE)
+    page = request.GET.get('page', 1)
+    posts_page = paginator.get_page(page)
+
     suggested = User.objects.exclude(
         id__in=following_users
     ).exclude(id=request.user.id).select_related('profile')[:5]
 
     comment_form = CommentForm()
-    # Annotate liked post ids for template
     liked_post_ids = set(Like.objects.filter(user=request.user).values_list('post_id', flat=True))
     return render(request, 'core/feed.html', {
-        'posts': posts,
+        'posts': posts_page,
         'suggested': suggested,
         'comment_form': comment_form,
         'liked_post_ids': liked_post_ids,
@@ -73,23 +78,29 @@ def feed(request):
 
 @login_required
 def explore(request):
-    posts = Post.objects.all().select_related('user', 'user__profile').prefetch_related('likes')
-    return render(request, 'core/explore.html', {'posts': posts})
+    posts = Post.objects.all().select_related('user', 'user__profile').prefetch_related('likes').order_by('-created_at')
+    paginator = Paginator(posts, POSTS_PER_PAGE)
+    page = request.GET.get('page', 1)
+    posts_page = paginator.get_page(page)
+    return render(request, 'core/explore.html', {'posts': posts_page})
 
 
 @login_required
 def profile_view(request, username):
     profile_user = get_object_or_404(User, username=username)
     profile = get_object_or_404(Profile, user=profile_user)
-    posts = Post.objects.filter(user=profile_user).order_by('-created_at')
+    posts = Post.objects.filter(user=profile_user).select_related('user').prefetch_related('likes', 'comments').order_by('-created_at')
+    paginator = Paginator(posts, POSTS_PER_PAGE)
+    page = request.GET.get('page', 1)
+    posts_page = paginator.get_page(page)
     is_following = Follow.objects.filter(follower=request.user, following=profile_user).exists()
-    followers = Follow.objects.filter(following=profile_user).select_related('follower')
-    following = Follow.objects.filter(follower=profile_user).select_related('following')
+    followers = Follow.objects.filter(following=profile_user).select_related('follower', 'follower__profile')[:50]
+    following = Follow.objects.filter(follower=profile_user).select_related('following', 'following__profile')[:50]
 
     return render(request, 'core/profile.html', {
         'profile_user': profile_user,
         'profile': profile,
-        'posts': posts,
+        'posts': posts_page,
         'is_following': is_following,
         'followers': followers,
         'following': following,

@@ -1201,3 +1201,32 @@ img::after {
   color: var(--accent);
   width: 18px;
 }
+
+/* ============================================================
+   PAGINATION
+   ============================================================ */
+.pagination {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 16px;
+  padding: 24px;
+  margin-top: 16px;
+}
+.pagination-btn {
+  padding: 8px 16px;
+  background: var(--accent);
+  color: #fff;
+  border-radius: var(--radius-sm);
+  text-decoration: none;
+  font-weight: 600;
+  font-size: 14px;
+  transition: opacity var(--transition);
+}
+.pagination-btn:hover {
+  opacity: 0.85;
+}
+.pagination-info {
+  color: var(--text-3);
+  font-size: 14px;
+}
