@@ -53,6 +53,7 @@ document.getElementById('id_profile_pic').addEventListener('change', function(e)
     const reader = new FileReader();
     reader.onload = function(ev) {
       const preview = document.getElementById('picPreview');
+      if (!preview) return;
       if (preview.tagName === 'IMG') {
         preview.src = ev.target.result;
       } else {
