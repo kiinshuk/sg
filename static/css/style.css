@@ -967,12 +967,17 @@ html.dark .create-btn{background:var(--text);color:var(--bg)!important;}
   .settings-card{border-radius:var(--radius);padding:22px;}
   .post-card{border-radius:0;border-left:none;border-right:none;}
   .explore-container,.search-container{padding:12px;}
-  .inbox-layout{grid-template-columns:1fr;height:auto;border-left:none;border-right:none;}
-  .inbox-panel{height:auto;border-right:none;}
+  .inbox-layout{grid-template-columns:1fr;height:calc(100vh - var(--topbar-h) - var(--bottom-nav-h));border-left:none;border-right:none;}
+  .inbox-panel{height:calc(100vh - var(--topbar-h) - var(--bottom-nav-h));border-right:none;}
   .inbox-chat-placeholder{display:none;}
   .chat-layout{grid-template-columns:1fr;height:calc(100vh - var(--topbar-h) - var(--bottom-nav-h));border-left:none;border-right:none;}
   .chat-sidebar-panel{display:none;}
   .chat-window{height:calc(100vh - var(--topbar-h) - var(--bottom-nav-h));}
+  .chat-back-btn{display:flex;}
+  .msg-bubble{max-width:260px;}
+  .convo-avatar{width:44px;height:44px;}
+  .convo-avatar-placeholder{width:44px;height:44px;font-size:17px;}
+  .convo-item{padding:10px 12px;gap:10px;}
   .group-info-panel{width:100%;border-left:none;box-shadow:var(--shadow-lg);}
   .profile-container{padding:16px 14px;}
   .posts-grid,.explore-grid{gap:2px;}
